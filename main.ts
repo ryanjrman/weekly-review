@@ -1,4 +1,13 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { 
+	App, 
+	Editor, 
+	MarkdownView, 
+	Modal, 
+	Notice, 
+	Plugin, 
+	PluginSettingTab, 
+	Setting,
+} from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -35,6 +44,13 @@ export default class WeeklyReview extends Plugin {
 			}
 		});
 
+		// This adds a separate recap command to the plugin using similar code
+		this.addCommand({
+			id: 'Start Recap',
+			name: 'Start Recap',
+			callback: async () => this.startRecap(),
+		});
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new WeeklyReviewSettingTab(this.app, this));
 	}
@@ -49,6 +65,26 @@ export default class WeeklyReview extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	async startRecap() {
+		// Opens modal for user input of how many days back they want to check
+		const modal = new Modal(this.app);
+		const recapTime = await modal.open();
+		const files = this.app.vault.getMarkdownFiles();
+
+		// Repurposed code from Review to get fils from the input number recapTime
+		let start = moment(moment().startOf('day')).subtract(recapTime);
+		let recentFiles = files.filter(f => start.isBefore(moment(f.stat.ctime)));
+
+		new Notice(`Scanning ${recentFiles.length} files created in the last ${recapTime} days.`);
+
+		//Scan the data needed from the files and print it to a document (words most used, files created (and list them), tag frquency, average words/characters per file)
+		//CHECK AND SEE IF THIS IS HOW YOU CREATE A NOTE ITS ALMOST CERTAINLY WRONG
+		let recapNote = this.create(path: './', data: string, options?: DataWriteOptions): Promise<TFile>;
+		
+
+		new Notice(`Opening Recap.`);
 	}
 }
 
@@ -78,4 +114,43 @@ class WeeklyReviewSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 	}
+}
+
+export class PopupModal extends Modal {
+	result: string;
+	onSubmit: (result: string) => void;
+
+	constructor(app: App, plugin: WeeklyReview, onSubmit: (result: string) => void) {
+		super(app, plugin);
+		this.plugin = plugin;
+		this.onSubmit = onSubmit;
+	  }
+	
+	  onOpen() {
+		const { recapInput } = this;
+	
+		recapInput.createEl("h1", { text: "Recap" });
+	
+		new Setting(recapInput)
+		  .setName("How many days ago do you want to recap?")
+		  .addText((text) =>
+			text.onChange((value) => {
+			  this.result = value
+			}));
+	
+		new Setting(recapInput)
+		  .addButton((btn) =>
+			btn
+			  .setButtonText("Submit")
+			  .setCta()
+			  .onClick(() => {
+				this.close();
+				this.onSubmit(this.result);
+			  }));
+	  }
+	
+	  onClose() {
+		let { recapInput } = this;
+		recapInput.empty();
+	  }
 }
